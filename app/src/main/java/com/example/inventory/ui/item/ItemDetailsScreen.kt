@@ -47,7 +47,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -57,6 +56,10 @@ import com.example.inventory.R
 import com.example.inventory.data.Item
 import com.example.inventory.ui.navigation.NavigationDestination
 import com.example.inventory.ui.theme.InventoryTheme
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.inventory.ui.AppViewModelProvider
+import androidx.compose.runtime.collectAsState
+import androidx.compose.ui.platform.LocalLayoutDirection
 
 object ItemDetailsDestination : NavigationDestination {
     override val route = "item_details"
@@ -70,8 +73,10 @@ object ItemDetailsDestination : NavigationDestination {
 fun ItemDetailsScreen(
     navigateToEditItem: (Int) -> Unit,
     navigateBack: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    viewModel: ItemDetailsViewModel = viewModel(factory = AppViewModelProvider.Factory)
 ) {
+    val uiState = viewModel.uiState.collectAsState()
     Scaffold(
         topBar = {
             InventoryTopAppBar(
@@ -94,15 +99,14 @@ fun ItemDetailsScreen(
         }, modifier = modifier
     ) { innerPadding ->
         ItemDetailsBody(
-            itemDetailsUiState = ItemDetailsUiState(),
+            itemUiState = uiState.value,
             onSellItem = { },
             onDelete = { },
-            modifier = Modifier
-                .padding(
-                    start = innerPadding.calculateStartPadding(LocalLayoutDirection.current),
-                    end = innerPadding.calculateEndPadding(LocalLayoutDirection.current),
-                    top = innerPadding.calculateTopPadding()
-                )
+            modifier = Modifier.padding(
+                start = innerPadding.calculateStartPadding(LocalLayoutDirection.current),
+                end = innerPadding.calculateEndPadding(LocalLayoutDirection.current),
+                top = innerPadding.calculateTopPadding()
+            )
                 .verticalScroll(rememberScrollState())
         )
     }
@@ -110,30 +114,31 @@ fun ItemDetailsScreen(
 
 @Composable
 private fun ItemDetailsBody(
-    itemDetailsUiState: ItemDetailsUiState,
+    itemUiState: ItemDetailsUiState,
     onSellItem: () -> Unit,
     onDelete: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
         modifier = modifier.padding(dimensionResource(id = R.dimen.padding_medium)),
-        verticalArrangement = Arrangement.spacedBy(dimensionResource(id = R.dimen.padding_medium))
+        verticalArrangement = Arrangement.spacedBy(dimensionResource(id =
+            R.dimen.padding_medium))
     ) {
         var deleteConfirmationRequired by rememberSaveable { mutableStateOf(false) }
 
         ItemDetails(
-            item = itemDetailsUiState.itemDetails.toItem(),
+            item = itemUiState.itemDetails.toItem(),
             modifier = Modifier.fillMaxWidth()
         )
         Button(
             onClick = onSellItem,
             modifier = Modifier.fillMaxWidth(),
             shape = MaterialTheme.shapes.small,
-            enabled = true
+            enabled = (itemUiState.itemDetails.quantity.toIntOrNull() ?: 0) > 0
         ) {
             Text(stringResource(R.string.sell))
         }
-        OutlinedButton(
+            OutlinedButton(
             onClick = { deleteConfirmationRequired = true },
             shape = MaterialTheme.shapes.small,
             modifier = Modifier.fillMaxWidth()
